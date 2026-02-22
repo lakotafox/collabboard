@@ -7,7 +7,7 @@ import { ColorPicker } from '../ui/ColorPicker'
 import { AIPanel } from '../ui/AIPanel'
 import { AuthScreen } from '../auth/AuthScreen'
 import { connectToBoard, disconnect } from '../sync/socket'
-import { useUIStore } from '../store/uiStore'
+import { useUIStore, themeConfig } from '../store/uiStore'
 import { useBoardStore } from '../store/boardStore'
 import { useToolStore } from '../store/toolStore'
 
@@ -42,7 +42,10 @@ export function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement) return
+      if ((e.target as HTMLElement)?.isContentEditable) return
 
       const store = useBoardStore.getState()
       const toolStore = useToolStore.getState()
@@ -73,6 +76,20 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Sync theme to CSS custom properties
+  const canvasTheme = useUIStore((s) => s.canvasTheme)
+  useEffect(() => {
+    const colors = themeConfig[canvasTheme]
+    const root = document.documentElement
+    root.style.setProperty('--bg', colors.bg)
+    root.style.setProperty('--ui-bg', colors.uiBg)
+    root.style.setProperty('--ui-border', colors.uiBorder)
+    root.style.setProperty('--text', colors.text)
+    root.style.setProperty('--text-muted', colors.textMuted)
+    root.style.setProperty('--accent', colors.accent)
+    document.body.style.background = colors.bg
+  }, [canvasTheme])
+
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -83,6 +100,16 @@ export function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  const handleLeave = useCallback(() => {
+    disconnect()
+    sessionStorage.removeItem('cb_userId')
+    sessionStorage.removeItem('cb_userName')
+    sessionStorage.removeItem('cb_userColor')
+    sessionStorage.removeItem('cb_boardId')
+    useBoardStore.getState().clearAll()
+    setAuthed(false)
+  }, [])
+
   if (!authed) {
     return <AuthScreen onLogin={handleLogin} />
   }
@@ -91,7 +118,7 @@ export function App() {
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas />
       <Toolbar />
-      <PresenceBar />
+      <PresenceBar onLeave={handleLeave} />
       <RemoteCursors />
       <ColorPicker />
       <AIPanel />

@@ -32,6 +32,9 @@ interface BoardState {
   // Bulk load
   loadObjects: (objects: Record<string, BoardObject>) => void
 
+  // Reset everything
+  clearAll: () => void
+
   // Send callback (set by sync layer)
   _sendAction: ((action: BoardAction) => void) | null
   setSendAction: (fn: (action: BoardAction) => void) => void
@@ -126,4 +129,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   setSendAction: (fn) => set({ _sendAction: fn }),
+
+  clearAll: () => set({
+    objects: new Map(),
+    camera: { x: 0, y: 0, zoom: 1 },
+    selectedIds: new Set(),
+    users: new Map(),
+    cursors: new Map(),
+    _sendAction: null,
+  }),
 }))

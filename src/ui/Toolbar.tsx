@@ -3,7 +3,7 @@ import { useToolStore } from '../store/toolStore'
 import { useUIStore } from '../store/uiStore'
 import type { ToolType } from '../../shared/types'
 
-// SVG icon components — no emojis
+// SVG icon components
 function IconSelect() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -77,37 +77,77 @@ function IconAI() {
   )
 }
 
+function IconSun() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="9" cy="9" r="4" />
+      <path d="M9 2v2M9 14v2M2 9h2M14 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M4.2 13.8l1.4-1.4M12.4 5.6l1.4-1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconMoon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M15 10.5A6.5 6.5 0 017.5 3 6 6 0 1015 10.5z" />
+    </svg>
+  )
+}
+
+function IconGrid() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 6h14M2 12h14M6 2v14M12 2v14" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 const tools: { id: ToolType; icon: React.ReactNode; label: string }[] = [
-  { id: 'select', icon: <IconSelect />, label: 'Select (V)' },
-  { id: 'pan', icon: <IconPan />, label: 'Pan (H)' },
-  { id: 'sticky', icon: <IconSticky />, label: 'Sticky Note (S)' },
-  { id: 'rect', icon: <IconRect />, label: 'Rectangle (R)' },
-  { id: 'circle', icon: <IconCircle />, label: 'Circle (C)' },
-  { id: 'line', icon: <IconLine />, label: 'Line (L)' },
-  { id: 'text', icon: <IconText />, label: 'Text (T)' },
-  { id: 'frame', icon: <IconFrame />, label: 'Frame (F)' },
+  { id: 'select', icon: <IconSelect />, label: 'Select' },
+  { id: 'pan', icon: <IconPan />, label: 'Pan' },
+  { id: 'sticky', icon: <IconSticky />, label: 'Note' },
+  { id: 'rect', icon: <IconRect />, label: 'Rect' },
+  { id: 'circle', icon: <IconCircle />, label: 'Circle' },
+  { id: 'line', icon: <IconLine />, label: 'Line' },
+  { id: 'text', icon: <IconText />, label: 'Text' },
+  { id: 'frame', icon: <IconFrame />, label: 'Frame' },
 ]
 
 export function Toolbar() {
   const activeTool = useToolStore((s) => s.activeTool)
   const setTool = useToolStore((s) => s.setTool)
   const toggleAIPanel = useUIStore((s) => s.toggleAIPanel)
+  const canvasTheme = useUIStore((s) => s.canvasTheme)
+  const toggleTheme = useUIStore((s) => s.toggleTheme)
+  const showGrid = useUIStore((s) => s.showGrid)
+  const toggleGrid = useUIStore((s) => s.toggleGrid)
 
   return (
     <div className="toolbar">
       {tools.map((t) => (
         <button
           key={t.id}
-          className={activeTool === t.id ? 'active' : ''}
+          className={`toolbar-btn ${activeTool === t.id ? 'active' : ''}`}
           onClick={() => setTool(t.id)}
           title={t.label}
         >
           {t.icon}
+          <span className="toolbar-label">{t.label}</span>
         </button>
       ))}
-      <div style={{ width: 1, background: '#45475a', margin: '4px 2px' }} />
-      <button onClick={toggleAIPanel} title="AI Assistant">
+      <div className="toolbar-divider" />
+      <button className={`toolbar-btn ${showGrid ? 'active' : ''}`} onClick={toggleGrid} title="Toggle Grid">
+        <IconGrid />
+        <span className="toolbar-label">Grid</span>
+      </button>
+      <button className="toolbar-btn" onClick={toggleTheme} title={canvasTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}>
+        {canvasTheme === 'dark' ? <IconSun /> : <IconMoon />}
+        <span className="toolbar-label">{canvasTheme === 'dark' ? 'Light' : 'Dark'}</span>
+      </button>
+      <div className="toolbar-divider" />
+      <button className="toolbar-btn" onClick={toggleAIPanel} title="AI Assistant">
         <IconAI />
+        <span className="toolbar-label">AI</span>
       </button>
     </div>
   )

@@ -2,6 +2,7 @@ import type { WSMessage, BoardAction, CursorData } from '../../shared/types'
 import { useBoardStore } from '../store/boardStore'
 import { useUIStore } from '../store/uiStore'
 import { throttle } from '../lib/utils'
+import { playUserJoined } from '../lib/sounds'
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -109,6 +110,7 @@ function handleMessage(msg: WSMessage, myUserId: string) {
 
     case 'join':
       store.addUser({ userId: msg.userId, name: msg.name, color: msg.color, online: true })
+      if (msg.userId !== myUserId) playUserJoined()
       break
 
     case 'leave':
