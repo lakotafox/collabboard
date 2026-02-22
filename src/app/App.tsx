@@ -9,6 +9,7 @@ import { AuthScreen } from '../auth/AuthScreen'
 import { connectToBoard, disconnect } from '../sync/socket'
 import { useUIStore } from '../store/uiStore'
 import { useBoardStore } from '../store/boardStore'
+import { useToolStore } from '../store/toolStore'
 
 export function App() {
   const [authed, setAuthed] = useState(false)
@@ -44,6 +45,7 @@ export function App() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
       const store = useBoardStore.getState()
+      const toolStore = useToolStore.getState()
       switch (e.key) {
         case 'Delete':
         case 'Backspace':
@@ -54,7 +56,16 @@ export function App() {
           break
         case 'Escape':
           store.clearSelection()
+          toolStore.setTool('select')
           break
+        case 'v': toolStore.setTool('select'); break
+        case 'h': toolStore.setTool('pan'); break
+        case 's': toolStore.setTool('sticky'); break
+        case 'r': toolStore.setTool('rect'); break
+        case 'c': toolStore.setTool('circle'); break
+        case 'l': toolStore.setTool('line'); break
+        case 't': toolStore.setTool('text'); break
+        case 'f': toolStore.setTool('frame'); break
       }
     }
 

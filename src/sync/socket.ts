@@ -5,11 +5,22 @@ import { throttle } from '../lib/utils'
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let intentionalClose = false
 
 export function connectToBoard(boardId: string, userId: string, userName: string, userColor: string) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.close()
+  // Clean up any existing connection
+  if (ws) {
+    intentionalClose = true
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      ws.close()
+    }
+    ws = null
   }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  intentionalClose = false
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const url = `${protocol}//${location.host}/ws/${boardId}`
@@ -48,12 +59,14 @@ export function connectToBoard(boardId: string, userId: string, userName: string
     useUIStore.getState().setConnected(false)
     useBoardStore.getState().setSendAction(null as any)
 
-    // Auto reconnect after 2s
-    if (reconnectTimer) clearTimeout(reconnectTimer)
-    reconnectTimer = setTimeout(() => {
-      console.log('[WS] Reconnecting...')
-      connectToBoard(boardId, userId, userName, userColor)
-    }, 2000)
+    // Only auto-reconnect if not intentionally closed
+    if (!intentionalClose) {
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      reconnectTimer = setTimeout(() => {
+        console.log('[WS] Reconnecting...')
+        connectToBoard(boardId, userId, userName, userColor)
+      }, 2000)
+    }
   }
 
   ws.onerror = (err) => {
@@ -114,6 +127,7 @@ export const sendCursor = throttle((cursor: CursorData) => {
 }, 33)
 
 export function disconnect() {
+  intentionalClose = true
   if (reconnectTimer) clearTimeout(reconnectTimer)
   reconnectTimer = null
   if (ws) {
