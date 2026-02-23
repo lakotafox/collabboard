@@ -13,7 +13,7 @@ function timeAgo(ts: number): string {
   return `${days}d ago`
 }
 
-export function BoardCard({ board, onClick }: { board: BoardListItem; onClick: () => void }) {
+export function BoardCard({ board, onClick, onDelete }: { board: BoardListItem; onClick: () => void; onDelete?: () => void }) {
   const [copied, setCopied] = useState(false)
 
   const copyCode = (e: React.MouseEvent) => {
@@ -56,6 +56,15 @@ export function BoardCard({ board, onClick }: { board: BoardListItem; onClick: (
           <span className="copy-hint">{copied ? 'Copied!' : 'Click to copy'}</span>
         </div>
       )}
+      {board.isOwner && onDelete && (
+        <button className="board-card-delete" onClick={(e) => {
+          e.stopPropagation()
+          playButtonClick()
+          if (confirm(`Delete "${board.name}"?`)) onDelete()
+        }}>
+          <TrashIcon /> Delete
+        </button>
+      )}
     </div>
   )
 }
@@ -65,6 +74,14 @@ function LockIcon() {
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="2" y="5" width="8" height="6" rx="1" />
       <path d="M4 5V3.5a2 2 0 014 0V5" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 3h8M4.5 3V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M9 3v7a1 1 0 01-1 1H4a1 1 0 01-1-1V3" />
     </svg>
   )
 }

@@ -133,7 +133,10 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
                 <h3 className="hub-section-title">Your Boards</h3>
                 <div className="board-grid">
                   {myBoards.map((b) => (
-                    <BoardCard key={b.id} board={b} onClick={() => { playJoinBoard(); onSelectBoard(b.id) }} />
+                    <BoardCard key={b.id} board={b} onClick={() => { playJoinBoard(); onSelectBoard(b.id) }} onDelete={async () => {
+                      await fetch(`/api/boards/${b.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
+                      fetchBoards()
+                    }} />
                   ))}
                 </div>
               </div>

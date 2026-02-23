@@ -213,11 +213,14 @@ export function Canvas() {
     textarea.style.top = `${container.offsetTop + screenY}px`
     textarea.style.left = `${container.offsetLeft + screenX}px`
     textarea.style.fontSize = `${(obj.fontSize || 16) * camera.zoom}px`
-    textarea.style.border = 'none'
-    textarea.style.padding = '4px'
+    textarea.style.width = `${Math.max(200, obj.width - padW) * camera.zoom}px`
+    textarea.style.height = `${Math.max(40, obj.height - padH) * camera.zoom}px`
+    textarea.style.border = '2px solid rgba(137, 180, 250, 0.4)'
+    textarea.style.borderRadius = '4px'
+    textarea.style.padding = '6px'
     textarea.style.margin = '0'
-    textarea.style.overflow = 'hidden'
-    textarea.style.background = 'transparent'
+    textarea.style.overflow = 'auto'
+    textarea.style.background = 'rgba(30, 30, 46, 0.95)'
     textarea.style.outline = 'none'
     textarea.style.resize = 'none'
     textarea.style.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif'
@@ -225,25 +228,9 @@ export function Canvas() {
     textarea.style.zIndex = '1000'
     textarea.style.lineHeight = '1.4'
 
-    if (isText) {
-      // Auto-sizing textarea for text objects
-      textarea.style.width = 'auto'
-      textarea.style.height = 'auto'
-      textarea.style.minWidth = '20px'
-      textarea.style.whiteSpace = 'pre'
-      // Measure and auto-resize on input
-      const autoSize = () => {
-        textarea.style.width = '0'
-        textarea.style.height = '0'
-        textarea.style.width = `${Math.max(20, textarea.scrollWidth + 4)}px`
-        textarea.style.height = `${textarea.scrollHeight}px`
-      }
-      textarea.addEventListener('input', autoSize)
-      // Initial size
-      requestAnimationFrame(autoSize)
-    } else {
-      textarea.style.width = `${(obj.width - padW) * camera.zoom}px`
-      textarea.style.height = `${(obj.height - padH) * camera.zoom}px`
+    if (isSticky) {
+      textarea.style.background = 'transparent'
+      textarea.style.border = 'none'
     }
 
     textarea.addEventListener('mousedown', (me) => me.stopPropagation())
@@ -694,9 +681,10 @@ export function Canvas() {
             id={`${obj.id}-text`}
             {...commonProps}
             text={editingId === obj.id ? '' : (obj.text || ' ')}
-            fontSize={obj.fontSize || 16}
+            fontSize={obj.fontSize || 20}
             fill={obj.stroke || '#cdd6f4'}
             fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
+            width={obj.width}
           />
         )
 

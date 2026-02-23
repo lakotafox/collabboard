@@ -6,14 +6,16 @@ import { playUserJoined } from '../lib/sounds'
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-let intentionalClose = false
+let currentBoardId: string | null = null
 
 export function connectToBoard(boardId: string, userId: string, userName: string, userColor: string) {
   // Clean up any existing connection
   if (ws) {
-    intentionalClose = true
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-      ws.close()
+    // Mark the old WS so its onclose won't interfere
+    const oldWs = ws
+    ;(oldWs as any)._stale = true
+    if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
+      oldWs.close()
     }
     ws = null
   }
@@ -21,14 +23,18 @@ export function connectToBoard(boardId: string, userId: string, userName: string
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
-  intentionalClose = false
+
+  currentBoardId = boardId
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const url = `${protocol}//${location.host}/ws/${boardId}`
 
-  ws = new WebSocket(url)
+  const socket = new WebSocket(url)
+  ws = socket
 
-  ws.onopen = () => {
+  socket.onopen = () => {
+    // If this socket was marked stale while connecting, ignore
+    if ((socket as any)._stale) return
     console.log('[WS] Connected to board:', boardId)
     useUIStore.getState().setConnected(true)
 
@@ -46,7 +52,9 @@ export function connectToBoard(boardId: string, userId: string, userName: string
     })
   }
 
-  ws.onmessage = (event) => {
+  socket.onmessage = (event) => {
+    // Ignore messages from stale sockets
+    if ((socket as any)._stale) return
     try {
       const msg: WSMessage = JSON.parse(event.data)
       handleMessage(msg, userId)
@@ -55,22 +63,31 @@ export function connectToBoard(boardId: string, userId: string, userName: string
     }
   }
 
-  ws.onclose = () => {
+  socket.onclose = () => {
+    // If this socket has been replaced by a newer one, don't touch state
+    if ((socket as any)._stale || ws !== socket) {
+      console.log('[WS] Stale socket closed, ignoring')
+      return
+    }
+
     console.log('[WS] Disconnected')
     useUIStore.getState().setConnected(false)
     useBoardStore.getState().setSendAction(null as any)
 
-    // Only auto-reconnect if not intentionally closed
-    if (!intentionalClose) {
+    // Only auto-reconnect if this is still the active board
+    if (currentBoardId === boardId) {
       if (reconnectTimer) clearTimeout(reconnectTimer)
       reconnectTimer = setTimeout(() => {
-        console.log('[WS] Reconnecting...')
-        connectToBoard(boardId, userId, userName, userColor)
+        // Double-check the board hasn't changed before reconnecting
+        if (currentBoardId === boardId) {
+          console.log('[WS] Reconnecting...')
+          connectToBoard(boardId, userId, userName, userColor)
+        }
       }, 2000)
     }
   }
 
-  ws.onerror = (err) => {
+  socket.onerror = (err) => {
     console.error('[WS] Error:', err)
   }
 }
@@ -129,10 +146,11 @@ export const sendCursor = throttle((cursor: CursorData) => {
 }, 33)
 
 export function disconnect() {
-  intentionalClose = true
+  currentBoardId = null
   if (reconnectTimer) clearTimeout(reconnectTimer)
   reconnectTimer = null
   if (ws) {
+    ;(ws as any)._stale = true
     ws.close()
     ws = null
   }

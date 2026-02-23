@@ -643,6 +643,23 @@ Bun.serve({
       return Response.json({ error: "Invalid invite code" }, { status: 404 })
     }
 
+    // DELETE /api/boards/:id — delete a board (owner only)
+    if (url.pathname.startsWith("/api/boards/") && req.method === "DELETE") {
+      const boardId = url.pathname.split("/").pop()!
+      const body = await req.json().catch(() => ({}))
+      const meta = boardMetas.get(boardId)
+      if (!meta) return Response.json({ error: "Board not found" }, { status: 404 })
+      if (meta.createdBy !== body.userId) return Response.json({ error: "Not authorized" }, { status: 403 })
+      boardMetas.delete(boardId)
+      chatHistories.delete(boardId)
+      const room = rooms.get(boardId)
+      if (room) {
+        room.sockets.forEach((s) => s.ws.close())
+        rooms.delete(boardId)
+      }
+      return Response.json({ ok: true })
+    }
+
     // ---- End Board Hub API ----
 
     // Serve static files from public/ directory
@@ -725,9 +742,21 @@ Bun.serve({
       const sock = room.sockets.get(socketId)
       if (sock) {
         room.sockets.delete(socketId)
-        room.users.delete(sock.userId)
-        broadcastToRoom(boardId, { type: 'leave', userId: sock.userId })
-        console.log(`[WS] ${sock.name} left board ${boardId} (${room.users.size} users)`)
+
+        // Only remove user presence if no other sockets remain for this userId
+        let hasOtherSocket = false
+        for (const s of room.sockets.values()) {
+          if (s.userId === sock.userId) {
+            hasOtherSocket = true
+            break
+          }
+        }
+        if (!hasOtherSocket) {
+          room.users.delete(sock.userId)
+          broadcastToRoom(boardId, { type: 'leave', userId: sock.userId })
+        }
+
+        console.log(`[WS] ${sock.name} left board ${boardId} (${room.users.size} users, ${room.sockets.size} sockets)`)
       }
     },
   },

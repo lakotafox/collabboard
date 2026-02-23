@@ -55,6 +55,10 @@ export function App() {
   }, [setUser])
 
   const handleSelectBoard = useCallback((boardId: string) => {
+    // Disconnect from any previous board and clear stale state
+    disconnect()
+    useBoardStore.getState().clearAll()
+
     sessionStorage.setItem('cb_boardId', boardId)
     setBoardId(boardId)
     connectToBoard(boardId, userId, userName, userColor)
