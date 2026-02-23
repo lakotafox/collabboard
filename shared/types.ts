@@ -57,6 +57,22 @@ export type WSMessage =
   | { type: 'action'; action: BoardAction; userId: string }
   | { type: 'sync'; objects: Record<string, BoardObject> }
 
+// Board metadata (hub)
+export interface BoardMeta {
+  id: string
+  name: string
+  createdBy: string
+  createdByName: string
+  visibility: 'public' | 'private'
+  inviteCode: string | null
+  createdAt: number
+  userCount: number
+}
+
+export interface BoardListItem extends BoardMeta {
+  isOwner: boolean
+}
+
 // Tool types
 export type ToolType = 'select' | 'sticky' | 'rect' | 'circle' | 'line' | 'text' | 'pan' | 'frame' | 'connector'
 

@@ -219,7 +219,7 @@ export function Canvas() {
     textarea.style.outline = 'none'
     textarea.style.resize = 'none'
     textarea.style.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif'
-    textarea.style.color = isSticky ? '#1e1e2e' : '#cdd6f4'
+    textarea.style.color = isSticky ? '#1e1e2e' : (obj.stroke && obj.stroke !== '#000000' ? obj.stroke : '#cdd6f4')
     textarea.style.zIndex = '1000'
     textarea.style.lineHeight = '1.4'
     textarea.addEventListener('mousedown', (me) => me.stopPropagation())
@@ -359,6 +359,7 @@ export function Canvas() {
             width: 200,
             height: 30,
             fill: 'transparent',
+            stroke: fillColor,
             text: '',
             fontSize: 20,
           }
@@ -376,6 +377,7 @@ export function Canvas() {
             strokeWidth: 2,
             text: 'Frame',
             fontSize: 14,
+            labelHeight: 20,
           }
           break
       }
@@ -538,7 +540,7 @@ export function Canvas() {
     switch (obj.type) {
       case 'sticky':
         return (
-          <Group key={obj.id} {...commonProps}>
+          <Group key={obj.id} {...commonProps} width={obj.width} height={obj.height}>
             <Rect
               width={obj.width}
               height={obj.height}
@@ -565,7 +567,7 @@ export function Canvas() {
 
       case 'rect':
         return obj.text ? (
-          <Group key={obj.id} {...commonProps}>
+          <Group key={obj.id} {...commonProps} width={obj.width} height={obj.height}>
             <Rect
               width={obj.width}
               height={obj.height}
@@ -660,7 +662,7 @@ export function Canvas() {
 
       case 'frame':
         return (
-          <Group key={obj.id} {...commonProps}>
+          <Group key={obj.id} {...commonProps} width={obj.width} height={obj.height}>
             <Text
               x={0}
               y={-20}
@@ -668,6 +670,7 @@ export function Canvas() {
               fontSize={obj.fontSize}
               fill="#a6adc8"
               fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
+              listening={false}
             />
             <Rect
               width={obj.width}

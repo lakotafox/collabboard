@@ -1,5 +1,5 @@
 import index from "../index.html"
-import type { BoardObject, BoardAction, WSMessage, UserPresence, CursorData } from "../shared/types"
+import type { BoardObject, BoardAction, WSMessage, UserPresence, CursorData, BoardMeta, BoardListItem } from "../shared/types"
 
 // ============================================================
 // Board state management (in-memory with persistence)
@@ -15,6 +15,50 @@ const rooms = new Map<string, BoardRoom>()
 
 // Per-board conversation history for AI context
 const chatHistories = new Map<string, Array<{ role: string; content: any }>>()
+
+// Board metadata for the hub
+const boardMetas = new Map<string, BoardMeta>()
+
+function ensureBoardMeta(boardId: string, creatorId?: string, creatorName?: string): BoardMeta {
+  if (!boardMetas.has(boardId)) {
+    boardMetas.set(boardId, {
+      id: boardId,
+      name: boardId,
+      createdBy: creatorId || 'unknown',
+      createdByName: creatorName || 'Unknown',
+      visibility: 'public',
+      inviteCode: null,
+      createdAt: Date.now(),
+      userCount: 0,
+    })
+  }
+  return boardMetas.get(boardId)!
+}
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  for (const meta of boardMetas.values()) {
+    if (meta.inviteCode === code) return generateInviteCode()
+  }
+  return code
+}
+
+function getBoardList(requestingUserId: string): BoardListItem[] {
+  const list: BoardListItem[] = []
+  boardMetas.forEach((meta) => {
+    const room = rooms.get(meta.id)
+    const userCount = room?.users.size ?? 0
+    const isOwner = meta.createdBy === requestingUserId
+    if (meta.visibility === 'public' || isOwner) {
+      list.push({ ...meta, userCount, isOwner })
+    }
+  })
+  return list.sort((a, b) => b.createdAt - a.createdAt)
+}
 
 function getRoom(boardId: string): BoardRoom {
   if (!rooms.has(boardId)) {
@@ -552,6 +596,55 @@ Bun.serve({
       return new Response("WebSocket upgrade failed", { status: 400 })
     }
 
+    // ---- Board Hub REST API ----
+
+    // GET /api/boards?userId=X — list boards visible to this user
+    if (url.pathname === "/api/boards" && req.method === "GET") {
+      const userId = url.searchParams.get("userId") || ""
+      return Response.json({ boards: getBoardList(userId) })
+    }
+
+    // POST /api/boards — create a new board
+    if (url.pathname === "/api/boards" && req.method === "POST") {
+      const body = await req.json()
+      const { name, visibility, userId, userName } = body
+      if (!name?.trim()) return Response.json({ error: "Board name required" }, { status: 400 })
+
+      const id = crypto.randomUUID()
+      const meta: BoardMeta = {
+        id,
+        name: name.trim().slice(0, 50),
+        createdBy: userId || 'unknown',
+        createdByName: userName || 'Unknown',
+        visibility: visibility === 'private' ? 'private' : 'public',
+        inviteCode: visibility === 'private' ? generateInviteCode() : null,
+        createdAt: Date.now(),
+        userCount: 0,
+      }
+      boardMetas.set(id, meta)
+      getRoom(id) // pre-create room
+      return Response.json({ board: meta })
+    }
+
+    // POST /api/boards/join — join a private board by invite code
+    if (url.pathname === "/api/boards/join" && req.method === "POST") {
+      const body = await req.json()
+      const code = (body.inviteCode || "").trim().toUpperCase()
+      if (!code) return Response.json({ error: "Invite code required" }, { status: 400 })
+
+      for (const meta of boardMetas.values()) {
+        if (meta.inviteCode === code) {
+          const room = rooms.get(meta.id)
+          return Response.json({
+            board: { ...meta, userCount: room?.users.size ?? 0, isOwner: meta.createdBy === body.userId }
+          })
+        }
+      }
+      return Response.json({ error: "Invalid invite code" }, { status: 404 })
+    }
+
+    // ---- End Board Hub API ----
+
     // Serve static files from public/ directory
     if (url.pathname.startsWith('/sounds/') || url.pathname.startsWith('/public/')) {
       const filePath = `public${url.pathname}`
@@ -583,6 +676,9 @@ Bun.serve({
 
         switch (msg.type) {
           case 'join': {
+            // Ensure board metadata exists
+            ensureBoardMeta(boardId, msg.userId, msg.name)
+
             // Register socket
             room.sockets.set(socketId, { ws, userId: msg.userId, name: msg.name, color: msg.color })
             room.users.set(msg.userId, { userId: msg.userId, name: msg.name, color: msg.color, online: true })

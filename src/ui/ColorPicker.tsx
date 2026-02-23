@@ -16,11 +16,18 @@ export function ColorPicker() {
   const selectedIds = useBoardStore((s) => s.selectedIds)
   const applyLocal = useBoardStore((s) => s.applyLocal)
 
+  const objects = useBoardStore((s) => s.objects)
+
   const handleColorClick = (color: string) => {
     setFillColor(color)
-    // Also update selected objects
+    // Also update selected objects — use stroke for text, fill for everything else
     selectedIds.forEach((id) => {
-      applyLocal({ type: 'object:update', id, props: { fill: color } })
+      const obj = objects.get(id)
+      if (obj?.type === 'text') {
+        applyLocal({ type: 'object:update', id, props: { stroke: color } })
+      } else {
+        applyLocal({ type: 'object:update', id, props: { fill: color } })
+      }
     })
   }
 
@@ -32,7 +39,7 @@ export function ColorPicker() {
       transform: 'translateX(-50%)',
       display: 'flex',
       gap: 4,
-      background: '#313244',
+      background: 'var(--ui-bg)',
       borderRadius: 12,
       padding: 6,
       boxShadow: '0 4px 12px rgba(0,0,0,0.3)',

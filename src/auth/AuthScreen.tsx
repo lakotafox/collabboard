@@ -9,18 +9,15 @@ interface AuthScreenProps {
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [name, setName] = useState('')
-  const [boardId, setBoardId] = useState('')
 
   const handleJoin = () => {
     if (!name.trim()) return
     playJoinBoard()
     const userId = generateId()
     const color = assignColor(userId)
-    const board = boardId.trim() || 'default'
     sessionStorage.setItem('cb_userId', userId)
     sessionStorage.setItem('cb_userName', name.trim())
     sessionStorage.setItem('cb_userColor', color)
-    sessionStorage.setItem('cb_boardId', board)
     onLogin(userId, name.trim(), color)
   }
 
@@ -52,14 +49,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
             onFocus={playButtonClick}
             autoFocus
           />
-          <input
-            value={boardId}
-            onChange={(e) => setBoardId(e.target.value)}
-            placeholder="Board ID (leave blank for default)"
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-            onFocus={playButtonClick}
-          />
-          <button onClick={handleJoin}>Join Board</button>
+          <button onClick={handleJoin}>Get Started</button>
         </div>
         <div className="auth-footer">
           Collaborate in real-time with AI assistance

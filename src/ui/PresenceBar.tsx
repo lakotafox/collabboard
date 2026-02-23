@@ -29,7 +29,7 @@ export function PresenceBar({ onLeave }: { onLeave: () => void }) {
           {user.name.charAt(0).toUpperCase()}
         </div>
       ))}
-      <button className="leave-btn" onClick={onLeave} title="Leave Board">
+      <button className="leave-btn" onClick={onLeave} title="Back to Hub">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <path d="M5 1H2.5A1.5 1.5 0 001 2.5v9A1.5 1.5 0 002.5 13H5M9.5 10l3-3-3-3M12.5 7H5" />
         </svg>
