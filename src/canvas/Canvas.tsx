@@ -83,6 +83,7 @@ export function Canvas() {
   // Line drawing state: first click sets start, second click sets end
   const [lineStart, setLineStart] = React.useState<{ x: number; y: number } | null>(null)
   const [linePreviewEnd, setLinePreviewEnd] = React.useState<{ x: number; y: number } | null>(null)
+  const [editingId, setEditingId] = React.useState<string | null>(null)
 
   const objects = useBoardStore((s) => s.objects)
   const camera = useBoardStore((s) => s.camera)
@@ -189,6 +190,8 @@ export function Canvas() {
     if (!obj) return
     if (obj.type !== 'sticky' && obj.type !== 'text') return
 
+    setEditingId(id)
+
     const stage = stageRef.current
     if (!stage) return
 
@@ -201,6 +204,7 @@ export function Canvas() {
     const padW = isSticky ? 20 : 0
     const padH = isSticky ? 20 : 0
 
+    const isText = obj.type === 'text'
     const textarea = document.createElement('textarea')
     document.body.appendChild(textarea)
 
@@ -208,8 +212,6 @@ export function Canvas() {
     textarea.style.position = 'absolute'
     textarea.style.top = `${container.offsetTop + screenY}px`
     textarea.style.left = `${container.offsetLeft + screenX}px`
-    textarea.style.width = `${(obj.width - padW) * camera.zoom}px`
-    textarea.style.height = `${(obj.height - padH) * camera.zoom}px`
     textarea.style.fontSize = `${(obj.fontSize || 16) * camera.zoom}px`
     textarea.style.border = 'none'
     textarea.style.padding = '4px'
@@ -222,6 +224,28 @@ export function Canvas() {
     textarea.style.color = isSticky ? '#1e1e2e' : (obj.stroke && obj.stroke !== '#000000' ? obj.stroke : '#cdd6f4')
     textarea.style.zIndex = '1000'
     textarea.style.lineHeight = '1.4'
+
+    if (isText) {
+      // Auto-sizing textarea for text objects
+      textarea.style.width = 'auto'
+      textarea.style.height = 'auto'
+      textarea.style.minWidth = '20px'
+      textarea.style.whiteSpace = 'pre'
+      // Measure and auto-resize on input
+      const autoSize = () => {
+        textarea.style.width = '0'
+        textarea.style.height = '0'
+        textarea.style.width = `${Math.max(20, textarea.scrollWidth + 4)}px`
+        textarea.style.height = `${textarea.scrollHeight}px`
+      }
+      textarea.addEventListener('input', autoSize)
+      // Initial size
+      requestAnimationFrame(autoSize)
+    } else {
+      textarea.style.width = `${(obj.width - padW) * camera.zoom}px`
+      textarea.style.height = `${(obj.height - padH) * camera.zoom}px`
+    }
+
     textarea.addEventListener('mousedown', (me) => me.stopPropagation())
     textarea.focus()
 
@@ -232,8 +256,25 @@ export function Canvas() {
       if (removed) return
       removed = true
       const newText = textarea.value
+      const props: Record<string, any> = { text: newText }
+      // For text objects, measure final size and update width/height to match
+      if (isText && newText) {
+        const measure = document.createElement('canvas').getContext('2d')
+        if (measure) {
+          measure.font = `${obj.fontSize || 16}px -apple-system, BlinkMacSystemFont, sans-serif`
+          const lines = newText.split('\n')
+          const lineHeight = (obj.fontSize || 16) * 1.4
+          let maxW = 0
+          for (const line of lines) {
+            maxW = Math.max(maxW, measure.measureText(line).width)
+          }
+          props.width = Math.ceil(maxW) + 8
+          props.height = Math.ceil(lines.length * lineHeight) + 4
+        }
+      }
       try { document.body.removeChild(textarea) } catch {}
-      applyLocal({ type: 'object:update', id, props: { text: newText } })
+      setEditingId(null)
+      applyLocal({ type: 'object:update', id, props })
     }
 
     textarea.addEventListener('keydown', (ke) => {
@@ -556,7 +597,7 @@ export function Canvas() {
               y={10}
               width={obj.width - 20}
               height={obj.height - 20}
-              text={obj.text}
+              text={editingId === obj.id ? '' : obj.text}
               fontSize={obj.fontSize}
               fill="#1e1e2e"
               fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
@@ -652,11 +693,10 @@ export function Canvas() {
             key={obj.id}
             id={`${obj.id}-text`}
             {...commonProps}
-            text={obj.text}
+            text={editingId === obj.id ? '' : (obj.text || ' ')}
             fontSize={obj.fontSize || 16}
             fill={obj.stroke || '#cdd6f4'}
             fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-            width={obj.width}
           />
         )
 

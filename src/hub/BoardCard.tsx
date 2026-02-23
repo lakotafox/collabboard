@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import type { BoardListItem } from '../../shared/types'
+import { playButtonClick } from '../lib/sounds'
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts
@@ -17,6 +18,7 @@ export function BoardCard({ board, onClick }: { board: BoardListItem; onClick: (
 
   const copyCode = (e: React.MouseEvent) => {
     e.stopPropagation()
+    playButtonClick()
     if (board.inviteCode) {
       navigator.clipboard.writeText(board.inviteCode)
       setCopied(true)

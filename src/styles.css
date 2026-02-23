@@ -395,6 +395,32 @@ body {
   transform: scale(0.98);
 }
 
+.auth-error {
+  color: #f38ba8;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-toggle {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6c7086;
+}
+
+.auth-toggle button {
+  background: none;
+  border: none;
+  color: #89b4fa;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.auth-toggle button:hover {
+  color: #a6c8ff;
+}
+
 .auth-footer {
   margin-top: 16px;
   font-size: 12px;
@@ -422,6 +448,7 @@ body {
   height: 100vh;
   background: #0a0a1a;
   overflow-y: auto;
+  position: relative;
 }
 
 .hub-header {
@@ -430,6 +457,8 @@ body {
   align-items: center;
   padding: 16px 24px;
   border-bottom: 1px solid rgba(137, 180, 250, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 .hub-logo {
@@ -481,10 +510,28 @@ body {
   color: #f38ba8;
 }
 
+.hub-delete-account {
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #585b70;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hub-delete-account:hover {
+  border-color: #f38ba8;
+  color: #f38ba8;
+}
+
 .hub-content {
   max-width: 960px;
   margin: 0 auto;
   padding: 32px 24px;
+  position: relative;
+  z-index: 1;
 }
 
 .hub-top-row {

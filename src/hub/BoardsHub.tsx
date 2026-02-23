@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { deleteUser } from 'firebase/auth'
+import { auth } from '../lib/firebase'
 import type { BoardListItem } from '../../shared/types'
 import { BoardCard } from './BoardCard'
 import { CreateBoardModal } from './CreateBoardModal'
+import { NetworkCanvas } from '../auth/NetworkCanvas'
+import { playButtonClick, playJoinBoard } from '../lib/sounds'
 
 interface Props {
   userId: string
@@ -61,6 +65,7 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
 
   return (
     <div className="hub-screen">
+      <NetworkCanvas />
       <div className="hub-header">
         <div className="hub-logo">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
@@ -77,14 +82,27 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
             {userName[0]?.toUpperCase()}
           </div>
           <span className="hub-username">{userName}</span>
-          <button className="hub-logout" onClick={onLogout}>Log out</button>
+          <button className="hub-logout" onClick={() => { playButtonClick(); onLogout() }}>Log out</button>
+          <button className="hub-delete-account" onClick={async () => {
+            playButtonClick()
+            if (!confirm('Delete your account? This cannot be undone.')) return
+            try {
+              const user = auth.currentUser
+              if (user) await deleteUser(user)
+              onLogout()
+            } catch (err: any) {
+              if (err?.code === 'auth/requires-recent-login') {
+                alert('Please log out and log back in, then try again.')
+              }
+            }
+          }}>Delete Account</button>
         </div>
       </div>
 
       <div className="hub-content">
         <div className="hub-top-row">
           <h2>Your Workspace</h2>
-          <button className="create-board-btn" onClick={() => setShowCreate(true)}>
+          <button className="create-board-btn" onClick={() => { playButtonClick(); setShowCreate(true) }}>
             + Create Board
           </button>
         </div>
@@ -100,7 +118,7 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
             maxLength={6}
             className="join-code-input"
           />
-          <button className="join-code-btn" onClick={handleJoinByCode} disabled={!joinCode.trim()}>
+          <button className="join-code-btn" onClick={() => { playButtonClick(); handleJoinByCode() }} disabled={!joinCode.trim()}>
             Join
           </button>
           {joinError && <span className="join-error">{joinError}</span>}
@@ -115,7 +133,7 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
                 <h3 className="hub-section-title">Your Boards</h3>
                 <div className="board-grid">
                   {myBoards.map((b) => (
-                    <BoardCard key={b.id} board={b} onClick={() => onSelectBoard(b.id)} />
+                    <BoardCard key={b.id} board={b} onClick={() => { playJoinBoard(); onSelectBoard(b.id) }} />
                   ))}
                 </div>
               </div>
@@ -126,7 +144,7 @@ export function BoardsHub({ userId, userName, userColor, onSelectBoard, onLogout
                 <h3 className="hub-section-title">Public Boards</h3>
                 <div className="board-grid">
                   {publicBoards.map((b) => (
-                    <BoardCard key={b.id} board={b} onClick={() => onSelectBoard(b.id)} />
+                    <BoardCard key={b.id} board={b} onClick={() => { playJoinBoard(); onSelectBoard(b.id) }} />
                   ))}
                 </div>
               </div>

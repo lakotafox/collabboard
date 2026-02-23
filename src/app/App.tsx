@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { auth } from '../lib/firebase'
 import { Canvas } from '../canvas/Canvas'
 import { Toolbar } from '../ui/Toolbar'
 import { PresenceBar } from '../ui/PresenceBar'
@@ -11,6 +13,7 @@ import { connectToBoard, disconnect } from '../sync/socket'
 import { useUIStore, themeConfig } from '../store/uiStore'
 import { useBoardStore } from '../store/boardStore'
 import { useToolStore } from '../store/toolStore'
+import { assignColor } from '../lib/utils'
 
 type AppView = 'auth' | 'hub' | 'board'
 
@@ -22,23 +25,28 @@ export function App() {
   const userName = useUIStore((s) => s.userName)
   const userColor = useUIStore((s) => s.userColor)
 
-  // Check for existing session
+  // Firebase auth state listener — restores session on reload
   useEffect(() => {
-    const storedUserId = sessionStorage.getItem('cb_userId')
-    const storedUserName = sessionStorage.getItem('cb_userName')
-    const storedUserColor = sessionStorage.getItem('cb_userColor')
-    const storedBoardId = sessionStorage.getItem('cb_boardId')
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const displayName = user.displayName || user.email?.split('@')[0] || 'User'
+        const color = assignColor(user.uid)
+        setUser(user.uid, displayName, color)
+        sessionStorage.setItem('cb_userId', user.uid)
+        sessionStorage.setItem('cb_userName', displayName)
+        sessionStorage.setItem('cb_userColor', color)
 
-    if (storedUserId && storedUserName && storedUserColor) {
-      setUser(storedUserId, storedUserName, storedUserColor)
-      if (storedBoardId) {
-        setBoardId(storedBoardId)
-        connectToBoard(storedBoardId, storedUserId, storedUserName, storedUserColor)
-        setView('board')
-      } else {
-        setView('hub')
+        const storedBoardId = sessionStorage.getItem('cb_boardId')
+        if (storedBoardId) {
+          setBoardId(storedBoardId)
+          connectToBoard(storedBoardId, user.uid, displayName, color)
+          setView('board')
+        } else {
+          setView('hub')
+        }
       }
-    }
+    })
+    return () => unsub()
   }, [])
 
   const handleLogin = useCallback((newUserId: string, name: string, color: string) => {
@@ -122,8 +130,9 @@ export function App() {
   }, [])
 
   // Full logout → back to auth
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     disconnect()
+    await signOut(auth).catch(() => {})
     sessionStorage.removeItem('cb_userId')
     sessionStorage.removeItem('cb_userName')
     sessionStorage.removeItem('cb_userColor')

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { playButtonClick } from '../lib/sounds'
 
 interface Props {
   userId: string
@@ -47,13 +48,13 @@ export function CreateBoardModal({ userId, userName, onCreated, onClose }: Props
         <div className="visibility-toggle">
           <button
             className={visibility === 'public' ? 'active' : ''}
-            onClick={() => setVisibility('public')}
+            onClick={() => { playButtonClick(); setVisibility('public') }}
           >
             <GlobeIcon /> Public
           </button>
           <button
             className={visibility === 'private' ? 'active' : ''}
-            onClick={() => setVisibility('private')}
+            onClick={() => { playButtonClick(); setVisibility('private') }}
           >
             <LockIcon /> Private
           </button>
@@ -64,8 +65,8 @@ export function CreateBoardModal({ userId, userName, onCreated, onClose }: Props
             : 'Only people with the invite code can join'}
         </p>
         <div className="create-modal-actions">
-          <button className="cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="create-btn" onClick={handleCreate} disabled={!name.trim() || loading}>
+          <button className="cancel-btn" onClick={() => { playButtonClick(); onClose() }}>Cancel</button>
+          <button className="create-btn" onClick={() => { playButtonClick(); handleCreate() }} disabled={!name.trim() || loading}>
             {loading ? 'Creating...' : 'Create Board'}
           </button>
         </div>

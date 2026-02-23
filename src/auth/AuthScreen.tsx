@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
-import { generateId, assignColor } from '../lib/utils'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '../lib/firebase'
+import { assignColor } from '../lib/utils'
 import { playButtonClick, playJoinBoard } from '../lib/sounds'
 import { NetworkCanvas } from './NetworkCanvas'
 
@@ -8,17 +10,57 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleJoin = () => {
-    if (!name.trim()) return
-    playJoinBoard()
-    const userId = generateId()
-    const color = assignColor(userId)
-    sessionStorage.setItem('cb_userId', userId)
-    sessionStorage.setItem('cb_userName', name.trim())
-    sessionStorage.setItem('cb_userColor', color)
-    onLogin(userId, name.trim(), color)
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Email and password required')
+      return
+    }
+    if (mode === 'signup' && !name.trim()) {
+      setError('Name is required')
+      return
+    }
+    setError('')
+    setLoading(true)
+
+    try {
+      let userCredential
+      if (mode === 'signup') {
+        userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password)
+        await updateProfile(userCredential.user, { displayName: name.trim() })
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email.trim(), password)
+      }
+
+      const user = userCredential.user
+      const displayName = user.displayName || name.trim() || email.split('@')[0]
+      const color = assignColor(user.uid)
+
+      playJoinBoard()
+      sessionStorage.setItem('cb_userId', user.uid)
+      sessionStorage.setItem('cb_userName', displayName)
+      sessionStorage.setItem('cb_userColor', color)
+      onLogin(user.uid, displayName, color)
+    } catch (err: any) {
+      const code = err?.code || ''
+      if (code === 'auth/email-already-in-use') setError('Email already in use')
+      else if (code === 'auth/invalid-email') setError('Invalid email')
+      else if (code === 'auth/weak-password') setError('Password must be 6+ characters')
+      else if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') setError('Invalid email or password')
+      else if (code === 'auth/wrong-password') setError('Invalid email or password')
+      else setError(err?.message || 'Authentication failed')
+    }
+    setLoading(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSubmit()
   }
 
   return (
@@ -41,15 +83,44 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         <h1>Masterboard</h1>
         <p>Real-time collaborative whiteboard</p>
         <div className="auth-form">
+          {mode === 'signup' && (
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Display name"
+              onKeyDown={handleKeyDown}
+              onFocus={playButtonClick}
+              autoFocus
+            />
+          )}
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            onKeyDown={handleKeyDown}
             onFocus={playButtonClick}
-            autoFocus
+            autoFocus={mode === 'login'}
           />
-          <button onClick={handleJoin}>Get Started</button>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            onKeyDown={handleKeyDown}
+            onFocus={playButtonClick}
+          />
+          {error && <div className="auth-error">{error}</div>}
+          <button onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Loading...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+          </button>
+        </div>
+        <div className="auth-toggle">
+          {mode === 'login' ? (
+            <>Don't have an account? <button onClick={() => { playButtonClick(); setMode('signup'); setError('') }}>Sign up</button></>
+          ) : (
+            <>Already have an account? <button onClick={() => { playButtonClick(); setMode('login'); setError('') }}>Sign in</button></>
+          )}
         </div>
         <div className="auth-footer">
           Collaborate in real-time with AI assistance
